@@ -16,7 +16,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       REVIEWER_PROFILE: default        # or: claude
       REVIEWER_VERSION: main           # tag or branch of ai-code-reviewer to build
@@ -56,8 +56,14 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           ./mvnw -B -q -DskipTests package
+          # CI settings: an incomplete review fails the PR instead of passing as COMMENT, and calls run one
+          # at a time with a long timeout, because a 7B model on a CPU-only runner takes minutes per call.
           nohup java -jar target/ai-code-reviewer-*.jar \
-            --spring.profiles.active="$REVIEWER_PROFILE" > reviewer.log 2>&1 &
+            --spring.profiles.active="$REVIEWER_PROFILE" \
+            --reviewer.verdict.on-reviewer-failure=REQUEST_CHANGES \
+            --reviewer.max-concurrent-calls=1 \
+            --reviewer.timeout-seconds=900 \
+            --spring.http.clients.read-timeout=960s > reviewer.log 2>&1 &
           # The first start pulls the model when it is not cached yet.
           for _ in $(seq 1 180); do
             curl -sf localhost:8080/actuator/health >/dev/null && exit 0
@@ -66,6 +72,8 @@ jobs:
           cat reviewer.log; exit 1
 
       - name: Review the diff
+        env:
+          REVIEW_TIMEOUT: '3000'
         run: .ai-code-reviewer/scripts/ci-review.sh "origin/${{ github.base_ref }}"
 
       - name: Make the model cache readable for actions/cache
