@@ -1,11 +1,14 @@
 package com.danilocordeiro.reviewer.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * A single review finding.
  *
  * @param line 1-based line of the submitted content, or {@code null} when the finding is not tied to a line
  * @param reviewer id of the reviewer that produced it; filled in by the orchestrator, never trusted from the model
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record Finding(
         Severity severity,
         Category category,
