@@ -1,0 +1,73 @@
+# Example: review every pull request with ai-code-reviewer running inside the job.
+# Copy to .github/workflows/ai-review.yml in the repository you want reviewed.
+#
+# Two ways to run the model:
+#   - Ollama (default below): free, no secrets, but slow on GitHub's CPU-only runners.
+#     The model (~4.7 GB) is cached between runs.
+#   - Claude: set the ANTHROPIC_API_KEY secret and REVIEWER_PROFILE=claude. Much faster.
+name: ai-review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      REVIEWER_PROFILE: default        # or: claude
+      REVIEWER_VERSION: main           # tag or branch of ai-code-reviewer to build
+    services:
+      ollama:
+        image: ollama/ollama:latest
+        ports: ['11434:11434']
+        volumes:
+          - /home/runner/.ollama:/root/.ollama
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0               # the script diffs against the PR base
+
+      - uses: actions/checkout@v7
+        with:
+          repository: dev-danilocordeiro/ai-code-reviewer
+          ref: ${{ env.REVIEWER_VERSION }}
+          path: .ai-code-reviewer
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Cache Ollama models
+        if: env.REVIEWER_PROFILE != 'claude'
+        uses: actions/cache@v6
+        with:
+          path: /home/runner/.ollama
+          key: ollama-qwen2.5-coder-7b
+
+      - name: Start ai-code-reviewer
+        working-directory: .ai-code-reviewer
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ./mvnw -B -q -DskipTests package
+          nohup java -jar target/ai-code-reviewer-*.jar \
+            --spring.profiles.active="$REVIEWER_PROFILE" > reviewer.log 2>&1 &
+          # The first start pulls the model when it is not cached yet.
+          for _ in $(seq 1 180); do
+            curl -sf localhost:8080/actuator/health >/dev/null && exit 0
+            sleep 5
+          done
+          cat reviewer.log; exit 1
+
+      - name: Review the diff
+        run: .ai-code-reviewer/scripts/ci-review.sh "origin/${{ github.base_ref }}"
+
+      - name: Make the model cache readable for actions/cache
+        if: always() && env.REVIEWER_PROFILE != 'claude'
+        run: sudo chown -R "$(id -u):$(id -g)" /home/runner/.ollama || true
