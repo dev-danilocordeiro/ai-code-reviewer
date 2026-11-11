@@ -1,2 +1,18 @@
-{"fileName": "OrderReportService.java", "isDiff": true, "issues": [
-  {"label": "N+1 query", "categories": ["PERFORMANCE"], "at": "items.findByOrderId(order.getId())"}]}
+{
+  "fileName": "OrderReportService.java",
+  "isDiff": true,
+  "issues": [
+    {
+      "label": "N+1 query",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "at": "items.findByOrderId(order.getId())",
+      "keywords": [
+        "n+1",
+        "loop",
+        "per order"
+      ]
+    }
+  ]
+}

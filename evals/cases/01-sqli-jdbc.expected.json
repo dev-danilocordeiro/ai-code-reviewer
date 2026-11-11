@@ -1,2 +1,16 @@
-{"fileName": "UserSearchDao.java", "issues": [
-  {"label": "SQL injection", "categories": ["SECURITY"], "at": "WHERE name = '\" + name"}]}
+{
+  "fileName": "UserSearchDao.java",
+  "issues": [
+    {
+      "label": "SQL injection",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "WHERE name = '\" + name",
+      "keywords": [
+        "sql",
+        "injection"
+      ]
+    }
+  ]
+}

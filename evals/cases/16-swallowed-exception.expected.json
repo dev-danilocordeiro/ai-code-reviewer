@@ -1,2 +1,21 @@
-{"fileName": "InvoiceSender.java", "isDiff": true, "issues": [
-  {"label": "Swallowed exception", "categories": ["MAINTAINABILITY", "BUG"], "at": "+        } catch (Exception e) {", "tolerance": 2}]}
+{
+  "fileName": "InvoiceSender.java",
+  "isDiff": true,
+  "issues": [
+    {
+      "label": "Swallowed exception",
+      "categories": [
+        "MAINTAINABILITY",
+        "BUG"
+      ],
+      "at": "+        } catch (Exception e) {",
+      "tolerance": 2,
+      "keywords": [
+        "swallow",
+        "ignor",
+        "empty catch",
+        "suppress"
+      ]
+    }
+  ]
+}

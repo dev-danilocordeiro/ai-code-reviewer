@@ -1,2 +1,19 @@
-{"fileName": "PriceController.java", "issues": [
-  {"label": "Synchronized handler serializes all requests around a remote call", "categories": ["PERFORMANCE"], "at": "public synchronized PriceDto price(", "tolerance": 3}]}
+{
+  "fileName": "PriceController.java",
+  "issues": [
+    {
+      "label": "Synchronized handler serializes all requests around a remote call",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "at": "public synchronized PriceDto price(",
+      "tolerance": 3,
+      "keywords": [
+        "synchronized",
+        "serializ",
+        "contention",
+        "blocking"
+      ]
+    }
+  ]
+}

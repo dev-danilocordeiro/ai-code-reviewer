@@ -1,2 +1,18 @@
-{"fileName": "AccountAdminController.java", "issues": [
-  {"label": "Missing authorization on delete", "categories": ["SECURITY"], "at": "public ResponseEntity<Void> delete(", "tolerance": 3}]}
+{
+  "fileName": "AccountAdminController.java",
+  "issues": [
+    {
+      "label": "Missing authorization on delete",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "public ResponseEntity<Void> delete(",
+      "tolerance": 3,
+      "keywords": [
+        "authoriz",
+        "preauthorize",
+        "access control"
+      ]
+    }
+  ]
+}

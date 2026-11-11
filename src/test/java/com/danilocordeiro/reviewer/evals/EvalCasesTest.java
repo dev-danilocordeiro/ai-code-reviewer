@@ -17,6 +17,8 @@ class EvalCasesTest {
 
         assertThat(cases).hasSize(25);
         assertThat(cases.stream().filter(EvalRunner.Case::clean)).hasSize(7);
+        assertThat(cases.stream().flatMap(c -> c.issues().stream()))
+                .allSatisfy(i -> assertThat(i.keywords()).as(i.label()).isNotEmpty());
     }
 
     @Test

@@ -1,3 +1,32 @@
-{"fileName": "SignupService.java", "issues": [
-  {"label": "@Transactional on a private self-invoked method has no effect", "categories": ["MAINTAINABILITY", "BUG"], "at": "private void createUser(", "tolerance": 2},
-  {"label": "Field injection", "categories": ["MAINTAINABILITY"], "at": "private UserRepository users;", "tolerance": 2}]}
+{
+  "fileName": "SignupService.java",
+  "issues": [
+    {
+      "label": "@Transactional on a private self-invoked method has no effect",
+      "categories": [
+        "MAINTAINABILITY",
+        "BUG"
+      ],
+      "at": "private void createUser(",
+      "tolerance": 2,
+      "keywords": [
+        "transactional",
+        "proxy",
+        "self-invocation"
+      ]
+    },
+    {
+      "label": "Field injection",
+      "categories": [
+        "MAINTAINABILITY"
+      ],
+      "at": "private UserRepository users;",
+      "tolerance": 2,
+      "keywords": [
+        "field injection",
+        "@autowired",
+        "constructor injection"
+      ]
+    }
+  ]
+}

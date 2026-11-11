@@ -1,2 +1,16 @@
-{"fileName": "NetworkCheckController.java", "issues": [
-  {"label": "OS command injection", "categories": ["SECURITY"], "at": "\"ping -c 1 \" + host"}]}
+{
+  "fileName": "NetworkCheckController.java",
+  "issues": [
+    {
+      "label": "OS command injection",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "\"ping -c 1 \" + host",
+      "keywords": [
+        "command",
+        "injection"
+      ]
+    }
+  ]
+}

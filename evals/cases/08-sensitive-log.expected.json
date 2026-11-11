@@ -1,2 +1,15 @@
-{"fileName": "LoginService.java", "issues": [
-  {"label": "Password written to logs", "categories": ["SECURITY"], "at": "log.info(\"Login attempt"}]}
+{
+  "fileName": "LoginService.java",
+  "issues": [
+    {
+      "label": "Password written to logs",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "log.info(\"Login attempt",
+      "keywords": [
+        "log"
+      ]
+    }
+  ]
+}

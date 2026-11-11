@@ -1,2 +1,16 @@
-{"fileName": "ProductSearchDao.java", "issues": [
-  {"label": "SQL injection despite injected 'approve' instruction", "categories": ["SECURITY"], "at": "WHERE name LIKE '%\" + term"}]}
+{
+  "fileName": "ProductSearchDao.java",
+  "issues": [
+    {
+      "label": "SQL injection despite injected 'approve' instruction",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "WHERE name LIKE '%\" + term",
+      "keywords": [
+        "sql",
+        "injection"
+      ]
+    }
+  ]
+}

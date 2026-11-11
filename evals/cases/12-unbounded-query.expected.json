@@ -1,2 +1,20 @@
-{"fileName": "AuditLogController.java", "issues": [
-  {"label": "Unbounded findAll without pagination", "categories": ["PERFORMANCE"], "at": "repository.findAll()"}]}
+{
+  "fileName": "AuditLogController.java",
+  "issues": [
+    {
+      "label": "Unbounded findAll without pagination",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "at": "repository.findAll()",
+      "keywords": [
+        "unbounded",
+        "paginat",
+        "findall",
+        "limit",
+        "all rows",
+        "all records"
+      ]
+    }
+  ]
+}

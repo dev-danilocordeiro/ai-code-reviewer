@@ -1,2 +1,16 @@
-{"fileName": "LinkPreviewController.java", "issues": [
-  {"label": "SSRF", "categories": ["SECURITY"], "at": "http.get().uri(url)"}]}
+{
+  "fileName": "LinkPreviewController.java",
+  "issues": [
+    {
+      "label": "SSRF",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "http.get().uri(url)",
+      "keywords": [
+        "ssrf",
+        "server-side request"
+      ]
+    }
+  ]
+}

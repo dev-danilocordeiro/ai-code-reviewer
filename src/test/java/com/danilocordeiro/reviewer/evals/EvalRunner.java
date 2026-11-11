@@ -26,8 +26,9 @@ import java.util.stream.Stream;
  * evals/run.sh --label ollama-qwen2.5-coder-7b [--base-url http://localhost:8080] [--only 01,18]
  * </pre>
  *
- * Scoring, per planted issue: detected when a finding has an accepted category and its line is within
- * {@code tolerance} (default 2) of the line containing the case's {@code at} snippet. Each finding can match
+ * Scoring, per planted issue: detected when a finding has an accepted category, its line is within
+ * {@code tolerance} (default 2) of the line containing the case's {@code at} snippet, and its title,
+ * description or suggestion mentions one of the issue's {@code keywords}. Each finding can match
  * one issue. Every finding that matches no planted issue counts as a false positive, including on clean cases.
  */
 public final class EvalRunner {
@@ -35,7 +36,17 @@ public final class EvalRunner {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<String> MEDIUM_OR_WORSE = Set.of("CRITICAL", "HIGH", "MEDIUM");
 
-    record Issue(String label, Set<String> categories, int line, int tolerance) {
+    record Issue(String label, Set<String> categories, int line, int tolerance, List<String> keywords) {
+
+        /** A finding must name the problem, not just sit on the right line. */
+        boolean describedBy(JsonNode f) {
+            if (keywords.isEmpty()) {
+                return true;
+            }
+            String text = (f.path("title").asString("") + " " + f.path("description").asString("") + " "
+                    + f.path("suggestion").asString("")).toLowerCase(Locale.ROOT);
+            return keywords.stream().anyMatch(text::contains);
+        }
     }
 
     record Case(String id, String fileName, boolean diff, String content, List<Issue> issues) {
@@ -118,7 +129,8 @@ public final class EvalRunner {
                 JsonNode line = f.get("line");
                 if (!used[i] && issue.categories().contains(f.get("category").asString())
                         && line != null && !line.isNull()
-                        && Math.abs(line.asInt() - issue.line()) <= issue.tolerance()) {
+                        && Math.abs(line.asInt() - issue.line()) <= issue.tolerance()
+                        && issue.describedBy(f)) {
                     match = i;
                 }
             }
@@ -202,8 +214,10 @@ public final class EvalRunner {
                 for (JsonNode i : expected.path("issues")) {
                     Set<String> categories = new HashSet<>();
                     i.get("categories").forEach(n -> categories.add(n.asString()));
+                    List<String> keywords = new ArrayList<>();
+                    i.path("keywords").forEach(n -> keywords.add(n.asString().toLowerCase(Locale.ROOT)));
                     issues.add(new Issue(i.get("label").asString(), categories,
-                            lineOf(content, i.get("at").asString(), id), i.path("tolerance").asInt(2)));
+                            lineOf(content, i.get("at").asString(), id), i.path("tolerance").asInt(2), keywords));
                 }
                 cases.add(new Case(id, expected.get("fileName").asString(),
                         expected.path("isDiff").asBoolean(false), content, issues));

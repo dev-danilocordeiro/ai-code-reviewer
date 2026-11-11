@@ -1,2 +1,16 @@
-{"fileName": "ReportDownloadController.java", "issues": [
-  {"label": "Path traversal", "categories": ["SECURITY"], "at": "REPORTS_DIR.resolve(fileName)"}]}
+{
+  "fileName": "ReportDownloadController.java",
+  "issues": [
+    {
+      "label": "Path traversal",
+      "categories": [
+        "SECURITY"
+      ],
+      "at": "REPORTS_DIR.resolve(fileName)",
+      "keywords": [
+        "traversal",
+        "path"
+      ]
+    }
+  ]
+}

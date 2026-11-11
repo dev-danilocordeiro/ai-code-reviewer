@@ -1,2 +1,21 @@
-{"fileName": "RequestCounter.java", "issues": [
-  {"label": "Unsynchronized HashMap check-then-act in a singleton", "categories": ["PERFORMANCE", "BUG"], "at": "new HashMap<>()", "tolerance": 12}]}
+{
+  "fileName": "RequestCounter.java",
+  "issues": [
+    {
+      "label": "Unsynchronized HashMap check-then-act in a singleton",
+      "categories": [
+        "PERFORMANCE",
+        "BUG"
+      ],
+      "at": "new HashMap<>()",
+      "tolerance": 12,
+      "keywords": [
+        "thread",
+        "race",
+        "concurren",
+        "synchroniz",
+        "atomic"
+      ]
+    }
+  ]
+}
