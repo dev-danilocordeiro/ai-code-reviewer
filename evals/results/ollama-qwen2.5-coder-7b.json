@@ -1,7 +1,7 @@
 [ {
   "case" : "01-sqli-jdbc",
   "status" : 200,
-  "latencyMs" : 11953,
+  "latencyMs" : 8079,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "1 finding: 1 critical.",
@@ -16,48 +16,23 @@
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "SQL Injection",
-      "description" : "SQL Injection vulnerability in the `findByName` method. The `name` parameter is directly concatenated into the SQL query, allowing an attacker to inject malicious SQL code.",
+      "description" : "SQL Injection vulnerability due to direct string concatenation in the SQL query.",
       "line" : 19,
-      "suggestion" : "Use a parameterized query to prevent SQL injection. Example: `String sql = \"SELECT id, name, email FROM users WHERE name = ?\"; return jdbc.queryForList(sql, name);`",
+      "suggestion" : "Use a parameterized query to prevent SQL injection. Example:\nString sql = \"SELECT id, name, email FROM users WHERE name = ?\";\nreturn jdbc.queryForList(sql, name);",
       "reviewer" : "security-reviewer+performance-reviewer+maintainability-reviewer"
     } ],
-    "durationMs" : 11879
+    "durationMs" : 7998
   }
 }, {
   "case" : "02-xss-servlet",
   "status" : 200,
-  "latencyMs" : 3205,
+  "latencyMs" : 6840,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
-    "summary" : "1 finding: 1 high.",
+    "summary" : "2 findings: 1 high, 1 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 1,
-      "MEDIUM" : 0,
-      "LOW" : 0,
-      "INFO" : 0
-    },
-    "findings" : [ {
-      "severity" : "HIGH",
-      "category" : "SECURITY",
-      "title" : "XSS Vulnerability",
-      "description" : "XSS vulnerability due to untrusted input being directly included in the HTML output.",
-      "line" : 18,
-      "suggestion" : "Sanitize the input before including it in the HTML output. Use a library like OWASP Java HTML Sanitizer to escape the input.",
-      "reviewer" : "security-reviewer"
-    } ],
-    "durationMs" : 3201
-  }
-}, {
-  "case" : "03-ssrf-fetch",
-  "status" : 200,
-  "latencyMs" : 13739,
-  "report" : {
-    "verdict" : "REQUEST_CHANGES",
-    "summary" : "3 findings: 2 high, 1 medium.",
-    "counts" : {
-      "CRITICAL" : 0,
-      "HIGH" : 2,
       "MEDIUM" : 1,
       "LOW" : 0,
       "INFO" : 0
@@ -65,92 +40,141 @@
     "findings" : [ {
       "severity" : "HIGH",
       "category" : "SECURITY",
-      "title" : "SSRF Vulnerability",
-      "description" : "The application is vulnerable to SSRF (Server-Side Request Forgery) because it directly uses the untrusted `url` parameter in a GET request without any validation or sanitization.",
-      "line" : 16,
-      "suggestion" : "Validate the `url` parameter to ensure it is a valid and safe URL. Consider using a whitelist of allowed domains or a URL parsing library to check the format and content of the URL before making the request. Example:\n\n```java\nprivate static final Set<String> ALLOWED_DOMAINS = Set.of(\"example.com\", \"another-example.com\");\n\n@GetMapping(\"/api/preview\")\npublic ResponseEntity<String> preview(@RequestParam String url) {\n    if (!isValidUrl(url)) {\n        return ResponseEntity.badRequest().body(\"Invalid URL\");\n    }\n    String html = http.get().uri(url).retrieve().body(String.class);\n    String title = extractTitle(html);\n    return ResponseEntity.ok(title);\n}\n\nprivate boolean isValidUrl(String url) {\n    try {\n        URI uri = new URI(url);\n        String host = uri.getHost();\n        if (host == null || !ALLOWED_DOMAINS.contains(host)) {\n            return false;\n        }\n        return true;\n    } catch (URISyntaxException e) {\n        return false;\n    }\n}\n```",
+      "title" : "XSS vulnerability",
+      "description" : "The servlet is vulnerable to Cross-Site Scripting (XSS) because it directly includes user input (`name`) in the HTML output without proper sanitization.",
+      "line" : 18,
+      "suggestion" : "Sanitize the user input before including it in the HTML output. For example, use `HttpServletResponse.encodeHTML(name)` to escape any HTML special characters.",
       "reviewer" : "security-reviewer"
     }, {
+      "severity" : "MEDIUM",
+      "category" : "MAINTAINABILITY",
+      "title" : "Missing parameter handling",
+      "description" : "The servlet does not handle missing or empty 'name' parameter, which can lead to a NullPointerException.",
+      "line" : 14,
+      "suggestion" : "Add a check for the 'name' parameter and provide a default value if it is missing or empty. For example:\n\nString name = req.getParameter(\"name\");\nif (name == null || name.isEmpty()) {\n    name = \"World\";\n}\n\nout.println(\"<h1>Hello, \" + name + \"!</h1>\");",
+      "reviewer" : "maintainability-reviewer"
+    } ],
+    "durationMs" : 6836
+  }
+}, {
+  "case" : "03-ssrf-fetch",
+  "status" : 200,
+  "latencyMs" : 15430,
+  "report" : {
+    "verdict" : "REQUEST_CHANGES",
+    "summary" : "4 findings: 1 critical, 1 high, 2 medium.",
+    "counts" : {
+      "CRITICAL" : 1,
+      "HIGH" : 1,
+      "MEDIUM" : 2,
+      "LOW" : 0,
+      "INFO" : 0
+    },
+    "findings" : [ {
+      "severity" : "CRITICAL",
+      "category" : "BUG",
+      "title" : "Non-thread-safe field injection",
+      "description" : "The `RestClient` is not thread-safe and should not be created as a field in a Spring-managed bean.",
+      "line" : 12,
+      "suggestion" : "Create a new `RestClient` instance within the `preview` method or use a `RestTemplate` with a thread-safe configuration if available. Alternatively, consider using a `WebClient` which is designed for reactive programming and is more suitable for use in a Spring application context.",
+      "reviewer" : "maintainability-reviewer"
+    }, {
       "severity" : "HIGH",
-      "category" : "PERFORMANCE",
-      "title" : "Blocking HTTP Request",
-      "description" : "The `preview` method makes a blocking HTTP request to an external URL, which can be slow and block the thread handling the request.",
+      "category" : "SECURITY",
+      "title" : "SSRF Vulnerability",
+      "description" : "The application is vulnerable to SSRF (Server-Side Request Forgery) because it directly uses user-provided input (`url`) to make HTTP requests without validation.",
       "line" : 16,
-      "suggestion" : "Use a non-blocking HTTP client like WebClient or RestTemplate with the `@Async` annotation to handle the request asynchronously and avoid blocking the main thread. Alternatively, consider using a caching mechanism to store and serve the preview data if it doesn't change frequently.",
+      "suggestion" : "Validate the URL to ensure it is within a whitelist of allowed domains. Use a URL parser to check the scheme and host, and reject any URLs that do not match the expected format or domain list. Example:\n\n```java\nprivate static final Set<String> ALLOWED_DOMAINS = Set.of(\"example.com\", \"another-example.com\");\n\n@GetMapping(\"/api/preview\")\npublic ResponseEntity<String> preview(@RequestParam String url) {\n    URL parsedUrl;\n    try {\n        parsedUrl = new URL(url);\n    } catch (MalformedURLException e) {\n        return ResponseEntity.badRequest().body(\"Invalid URL\");\n    }\n\n    if (!ALLOWED_DOMAINS.contains(parsedUrl.getHost())) {\n        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(\"URL not allowed\");\n    }\n\n    String html = http.get().uri(url).retrieve().body(String.class);\n    String title = extractTitle(html);\n    return ResponseEntity.ok(title);\n}\n```",
+      "reviewer" : "security-reviewer"
+    }, {
+      "severity" : "MEDIUM",
+      "category" : "PERFORMANCE",
+      "title" : "Unnecessary object creation",
+      "description" : "The `RestClient` is created as a field, which means a new instance is created for each request. This can lead to performance issues if the controller is used frequently.",
+      "line" : 12,
+      "suggestion" : "Create the `RestClient` instance as a bean in a configuration class and inject it into the controller. This will ensure that the same instance is reused across requests, improving performance and reducing resource consumption.",
       "reviewer" : "performance-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Duplicated Logic",
-      "description" : "The `extractTitle` method is duplicated logic for extracting the title from HTML. This logic should be encapsulated in a utility class to avoid duplication.",
+      "title" : "Lack of tests for non-trivial logic",
+      "description" : "The `extractTitle` method is responsible for parsing HTML, which is a non-trivial task. This logic should be tested to ensure correctness.",
       "line" : 21,
-      "suggestion" : "Create a utility class, e.g., `HtmlUtils`, with a static method `extractTitle(String html)` that contains the logic from lines 21-24. Then, use this method in `LinkPreviewController` and other places where title extraction is needed.",
+      "suggestion" : "Add unit tests for the `extractTitle` method to verify that it correctly extracts the title from various HTML inputs.",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 13735
+    "durationMs" : 15426
   }
 }, {
   "case" : "04-unsafe-deserialization",
   "status" : 200,
-  "latencyMs" : 47483,
+  "latencyMs" : 8679,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
-    "summary" : "1 finding: 1 critical. Incomplete review: security-reviewer returned invalid JSON.",
+    "summary" : "2 findings: 2 critical.",
     "counts" : {
-      "CRITICAL" : 1,
+      "CRITICAL" : 2,
       "HIGH" : 0,
       "MEDIUM" : 0,
       "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
+      "severity" : "CRITICAL",
+      "category" : "SECURITY",
+      "title" : "Unsafe Deserialization",
+      "description" : "Unsafe deserialization of untrusted input.",
+      "line" : 19,
+      "suggestion" : "Use a safe deserialization library or implement a whitelist of allowed classes. Avoid using `ObjectInputStream` directly for untrusted data.",
+      "reviewer" : "security-reviewer"
+    }, {
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "Untrusted deserialization",
       "description" : "Deserializing untrusted data can lead to remote code execution (RCE) vulnerabilities.",
       "line" : 19,
-      "suggestion" : "Avoid deserializing untrusted data. Consider using a safer format like JSON or XML for session data, or use a whitelist of allowed classes if deserialization is necessary.",
+      "suggestion" : "Avoid deserializing untrusted data. Consider using a safer format like JSON or XML for session data, or use a whitelist of allowed classes if deserialization is necessary. If deserialization is required, ensure that the environment is secure and that the deserialization process is properly sandboxed and monitored for any malicious activity.",
       "reviewer" : "performance-reviewer+maintainability-reviewer"
     } ],
-    "durationMs" : 47480
+    "durationMs" : 8675
   }
 }, {
   "case" : "05-path-traversal",
   "status" : 200,
-  "latencyMs" : 7551,
+  "latencyMs" : 9689,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
-    "summary" : "2 findings: 1 critical, 1 medium.",
+    "summary" : "2 findings: 2 critical.",
     "counts" : {
-      "CRITICAL" : 1,
+      "CRITICAL" : 2,
       "HIGH" : 0,
-      "MEDIUM" : 1,
+      "MEDIUM" : 0,
       "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
       "severity" : "CRITICAL",
       "category" : "SECURITY",
-      "title" : "Potential Directory Traversal",
+      "title" : "Directory Traversal Vulnerability",
       "description" : "The application does not validate the file name, which could lead to directory traversal attacks.",
       "line" : 18,
-      "suggestion" : "Validate the file name to ensure it does not contain any path traversal characters (e.g., '../'). For example, use a whitelist of allowed file names or sanitize the input using a method like `Path.get(fileName).normalize().toString()` and compare it to the expected path to ensure it does not go outside the intended directory. Additionally, consider using a `FileSystemResource` instead of `PathResource` to avoid potential issues with file system access.",
-      "reviewer" : "maintainability-reviewer"
+      "suggestion" : "Validate the file name to ensure it does not contain any directory traversal characters (e.g., '../'). For example, use a whitelist of allowed file names or sanitize the input using a library like Apache Commons IO's FilenameUtils.normalize().",
+      "reviewer" : "performance-reviewer+maintainability-reviewer"
     }, {
-      "severity" : "MEDIUM",
+      "severity" : "CRITICAL",
       "category" : "SECURITY",
-      "title" : "Path Traversal Vulnerability",
-      "description" : "The application is vulnerable to path traversal attacks because it does not validate the `fileName` parameter.",
+      "title" : "Path Traversal",
+      "description" : "Path traversal vulnerability allows attackers to access files outside the intended directory.",
       "line" : 18,
-      "suggestion" : "Validate the `fileName` parameter to ensure it does not contain any path traversal sequences (e.g., `../`). For example, use a whitelist of allowed file names or sanitize the input using a method like `Path.get(fileName).normalize().startsWith(REPORTS_DIR)` to prevent traversal to parent directories.",
+      "suggestion" : "Validate the fileName to ensure it does not contain any path traversal characters (e.g., '../'). Use a whitelist of allowed file names or sanitize the input by removing any path separators before resolving the path. Example:\n\n```java\nif (fileName.contains(\"/\") || fileName.contains(\"..\")) {\n    throw new IllegalArgumentException(\"Invalid file name\");\n}\n```",
       "reviewer" : "security-reviewer"
     } ],
-    "durationMs" : 7547
+    "durationMs" : 9685
   }
 }, {
   "case" : "06-weak-password-hash",
   "status" : 200,
-  "latencyMs" : 8751,
+  "latencyMs" : 10162,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "1 finding: 1 critical.",
@@ -164,43 +188,43 @@
     "findings" : [ {
       "severity" : "CRITICAL",
       "category" : "SECURITY",
-      "title" : "Weak Hash Function",
-      "description" : "MD5 is a weak hash function and should not be used for password hashing. It is vulnerable to collision attacks.",
+      "title" : "Use of insecure hash function",
+      "description" : "MD5 is considered cryptographically broken and should not be used for secure applications.",
       "line" : 12,
-      "suggestion" : "Use a stronger hash function like SHA-256 or Argon2 for password hashing. Example: MessageDigest.getInstance(\"SHA-256\");",
-      "reviewer" : "security-reviewer+performance-reviewer+maintainability-reviewer"
+      "suggestion" : "Replace MD5 with a more secure hash function like SHA-256 or bcrypt. Example: MessageDigest.getInstance(\"SHA-256\").digest(rawPassword.getBytes(StandardCharsets.UTF_8));",
+      "reviewer" : "performance-reviewer+security-reviewer+maintainability-reviewer"
     } ],
-    "durationMs" : 8748
+    "durationMs" : 10159
   }
 }, {
   "case" : "07-missing-authz",
   "status" : 200,
-  "latencyMs" : 3213,
+  "latencyMs" : 4452,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "1 finding: 1 info.",
+    "summary" : "1 finding: 1 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
-      "MEDIUM" : 0,
+      "MEDIUM" : 1,
       "LOW" : 0,
-      "INFO" : 1
+      "INFO" : 0
     },
     "findings" : [ {
-      "severity" : "INFO",
+      "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Class is too small",
-      "description" : "The class is too small and does not contain any duplicated logic or complex logic. It is a good practice to have a single responsibility per class.",
-      "line" : 1,
-      "suggestion" : "",
+      "title" : "Oversized Class",
+      "description" : "The class is too large, containing multiple endpoints. This makes it harder to maintain and understand.",
+      "line" : 7,
+      "suggestion" : "Consider splitting the class into smaller, more focused classes, each handling a specific set of endpoints. For example, create a `AccountManagementController` for admin-related operations and a `AccountUserController` for user-related operations. This will improve the maintainability and readability of the codebase.",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 3210
+    "durationMs" : 4449
   }
 }, {
   "case" : "08-sensitive-log",
   "status" : 200,
-  "latencyMs" : 3751,
+  "latencyMs" : 3286,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "1 finding: 1 critical.",
@@ -215,17 +239,17 @@
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "Sensitive data logged",
-      "description" : "Sensitive data (password) is being logged, which can lead to data loss if the logs are compromised.",
+      "description" : "Sensitive data (password) is logged, which can lead to data loss or exposure.",
       "line" : 19,
-      "suggestion" : "Do not log sensitive data. Consider logging only the username and a success/failure status without the password. Example: log.info(\"Login attempt user={} status={}\", username, ok ? \"success\" : \"failure\");",
+      "suggestion" : "Do not log sensitive data such as passwords. Consider logging only the username or a placeholder for the password.",
       "reviewer" : "security-reviewer"
     } ],
-    "durationMs" : 3748
+    "durationMs" : 3283
   }
 }, {
   "case" : "09-hardcoded-secret",
   "status" : 200,
-  "latencyMs" : 7636,
+  "latencyMs" : 9485,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "2 findings: 2 critical.",
@@ -240,9 +264,9 @@
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "Hardcoded AWS Credentials",
-      "description" : "Hardcoded AWS credentials in the source code can lead to security breaches if the code is shared or exposed.",
+      "description" : "Hardcoded AWS credentials are exposed in the source code, which can lead to unauthorized access to the AWS account.",
       "line" : 10,
-      "suggestion" : "Use environment variables or a secure vault to store AWS credentials and retrieve them at runtime. Avoid hardcoding sensitive information in the source code.",
+      "suggestion" : "Use environment variables or a secure vault to store and retrieve AWS credentials. Avoid hardcoding sensitive information in the source code.",
       "reviewer" : "security-reviewer+performance-reviewer+maintainability-reviewer"
     }, {
       "severity" : "CRITICAL",
@@ -253,19 +277,19 @@
       "suggestion" : "Remove the value from the code, rotate the credential, and load it at runtime from an environment variable or a secret manager.",
       "reviewer" : "secret-scanner"
     } ],
-    "durationMs" : 7633
+    "durationMs" : 9482
   }
 }, {
   "case" : "10-command-injection",
   "status" : 200,
-  "latencyMs" : 14692,
+  "latencyMs" : 10422,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
-    "summary" : "3 findings: 1 critical, 2 medium.",
+    "summary" : "2 findings: 1 critical, 1 high.",
     "counts" : {
       "CRITICAL" : 1,
-      "HIGH" : 0,
-      "MEDIUM" : 2,
+      "HIGH" : 1,
+      "MEDIUM" : 0,
       "LOW" : 0,
       "INFO" : 0
     },
@@ -273,33 +297,25 @@
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "OS Command Injection",
-      "description" : "The application is vulnerable to OS command injection via the `host` parameter. An attacker could provide a malicious input that alters the command being executed, potentially leading to arbitrary command execution.",
+      "description" : "The application is vulnerable to OS command injection via the 'host' parameter.",
       "line" : 14,
-      "suggestion" : "Use a whitelist of allowed hosts or validate and sanitize the input to ensure it does not contain any malicious characters or patterns. Consider using a library or framework that provides safe ways to execute external commands, such as Apache Commons Exec or Spring's `ProcessBuilder` with proper validation and sanitization of inputs.",
+      "suggestion" : "Use a whitelist of allowed hosts or a library designed to safely execute shell commands, such as Apache Commons Exec or OWASP Java HTML Sanitizer for command arguments. Avoid directly concatenating user input into command strings.",
       "reviewer" : "security-reviewer+maintainability-reviewer"
     }, {
-      "severity" : "MEDIUM",
-      "category" : "MAINTAINABILITY",
-      "title" : "Insufficient Error Handling",
-      "description" : "The method `ping` is too simple and does not handle potential exceptions or edge cases, such as network issues or invalid host names.",
-      "line" : 13,
-      "suggestion" : "Consider adding more robust error handling and logging to improve the method's reliability and maintainability. For example:\n\n```java\n@GetMapping(\"/diagnostics/ping\")\npublic String ping(@RequestParam String host) {\n    try {\n        ProcessBuilder pb = new ProcessBuilder(\"sh\", \"-c\", \"ping -c 1 \" + host);\n        Process process = pb.start();\n        int exit = process.waitFor();\n        return exit == 0 ? \"reachable\" : \"unreachable\";\n    } catch (IOException | InterruptedException e) {\n        // Log the exception and return a meaningful error message\n        return \"error: \" + e.getMessage();\n    }\n}\n```",
-      "reviewer" : "maintainability-reviewer"
-    }, {
-      "severity" : "MEDIUM",
+      "severity" : "HIGH",
       "category" : "PERFORMANCE",
       "title" : "Blocking Call on Hot Path",
       "description" : "The ping command is executed synchronously, which can block the thread handling the request, leading to potential performance issues under high load.",
       "line" : 14,
-      "suggestion" : "Consider using an asynchronous approach to execute the ping command, such as using a separate thread or a scheduled task, to avoid blocking the main request thread.",
+      "suggestion" : "Use an asynchronous approach to execute the ping command, such as using a separate thread or a scheduled task, to avoid blocking the main request thread. Consider using a library like Apache Commons Exec or a similar asynchronous execution framework to handle the ping command without blocking the main thread. Ensure proper error handling and resource management in the asynchronous execution path.",
       "reviewer" : "performance-reviewer"
     } ],
-    "durationMs" : 14689
+    "durationMs" : 10419
   }
 }, {
   "case" : "11-n-plus-one",
   "status" : 200,
-  "latencyMs" : 11578,
+  "latencyMs" : 14462,
   "report" : {
     "verdict" : "COMMENT",
     "summary" : "2 findings: 2 medium.",
@@ -313,66 +329,50 @@
     "findings" : [ {
       "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Large and Complex Method",
-      "description" : "The method `summaries` is too large and complex, making it difficult to understand and maintain.",
-      "line" : 8,
-      "suggestion" : "Refactor the method into smaller, more focused methods. For example, extract the logic for calculating the total into a separate method called `calculateTotal` that takes a list of `OrderItem` and returns a `BigDecimal` total. Similarly, extract the logic for creating an `OrderSummary` into a method called `createOrderSummary` that takes an `Order` and a `List<OrderItem>` and returns an `OrderSummary` object. This will make the method easier to read and maintain, and also make it easier to test each part of the logic independently.",
+      "title" : "Method does too much",
+      "description" : "The method `summaries` is doing too much work. It fetches orders, items, and calculates totals, which should be separated into smaller methods.",
+      "line" : 9,
+      "suggestion" : "Refactor `summaries` into smaller methods: one to fetch orders, one to fetch items, and one to calculate totals. Each method should have a single responsibility and be easier to test and maintain. For example:\n\n```java\n@Transactional(readOnly = true)\npublic List<OrderSummary> summaries(LocalDate day) {\n    List<Order> dayOrders = orders.findByCreatedDate(day);\n    return dayOrders.stream()\n            .map(order -> new OrderSummary(order.getId(), orderItemsService.countItems(order.getId()), orderItemsService.calculateTotal(order.getId())))\n            .collect(Collectors.toList());\n}\n\n@Service\npublic class OrderItemsService {\n    @Autowired\n    private OrderItemRepository items;\n\n    @Transactional(readOnly = true)\n    public int countItems(long orderId) {\n        return items.countByOrderId(orderId);\n    }\n\n    @Transactional(readOnly = true)\n    public BigDecimal calculateTotal(long orderId) {\n        return items.findByOrderId(orderId).stream()\n                .map(OrderItem::getPrice)\n                .reduce(BigDecimal.ZERO, BigDecimal::add);\n    }\n}\n```",
       "reviewer" : "maintainability-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
       "title" : "N+1 Query",
-      "description" : "N+1 queries are used to fetch order items for each order, which can lead to a significant number of database queries if there are many orders.",
+      "description" : "N+1 query issue. The method `summaries` makes a separate query for each order to fetch its items, leading to N+1 queries where N is the number of orders.",
       "line" : 13,
-      "suggestion" : "Use a JOIN query to fetch all order items for the day in a single query. For example:\n\n```java\n@Transactional(readOnly = true)\npublic List<OrderSummary> summaries(LocalDate day) {\n    List<Order> dayOrders = orders.findByCreatedDate(day);\n    List<OrderItem> allItems = items.findByOrderIds(dayOrders.stream().map(Order::getId).collect(Collectors.toList()));\n    Map<Long, List<OrderItem>> orderItemsMap = allItems.stream().collect(Collectors.groupingBy(OrderItem::getOrderId));\n    List<OrderSummary> result = new ArrayList<>();\n    for (Order order : dayOrders) {\n        List<OrderItem> lines = orderItemsMap.get(order.getId());\n        BigDecimal total = lines.stream()\n                .map(OrderItem::getPrice)\n                .reduce(BigDecimal.ZERO, BigDecimal::add);\n        result.add(new OrderSummary(order.getId(), lines.size(), total));\n    }\n    return result;\n}\n```",
+      "suggestion" : "Use a JOIN query to fetch all items for the orders in a single query. For example:\n\n```java\n@Transactional(readOnly = true)\npublic List<OrderSummary> summaries(LocalDate day) {\n    List<Order> dayOrders = orders.findByCreatedDate(day);\n    List<OrderItem> allItems = items.findByOrderIds(dayOrders.stream().map(Order::getId).collect(Collectors.toList()));\n    Map<Long, List<OrderItem>> orderItemsMap = allItems.stream().collect(Collectors.groupingBy(OrderItem::getOrderId));\n    List<OrderSummary> result = new ArrayList<>();\n    for (Order order : dayOrders) {\n        List<OrderItem> lines = orderItemsMap.get(order.getId());\n        BigDecimal total = lines.stream()\n                .map(OrderItem::getPrice)\n                .reduce(BigDecimal.ZERO, BigDecimal::add);\n        result.add(new OrderSummary(order.getId(), lines.size(), total));\n    }\n    return result;\n}\n```",
       "reviewer" : "performance-reviewer"
     } ],
-    "durationMs" : 11574
+    "durationMs" : 14458
   }
 }, {
   "case" : "12-unbounded-query",
   "status" : 200,
-  "latencyMs" : 7869,
+  "latencyMs" : 43161,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "2 findings: 1 medium, 1 low.",
+    "summary" : "No issues found. Incomplete review: performance-reviewer returned invalid JSON.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
-      "MEDIUM" : 1,
-      "LOW" : 1,
+      "MEDIUM" : 0,
+      "LOW" : 0,
       "INFO" : 0
     },
-    "findings" : [ {
-      "severity" : "MEDIUM",
-      "category" : "PERFORMANCE",
-      "title" : "N+1 Query",
-      "description" : "The `findAll()` method in the repository is likely to cause an N+1 query issue if the `AuditEventRepository` is using a JPA repository and the `AuditEventDto` includes associations that are not fetched lazily.",
-      "line" : 19,
-      "suggestion" : "Consider using a projection or DTO that fetches only the necessary fields, or use a custom query to avoid N+1 queries. For example, use a JPQL query with a join fetch to fetch all necessary data in a single query: `repository.findAllWithDetails().stream().map(AuditEventDto::from).toList();` where `findAllWithDetails()` is a custom query method in the repository that fetches all necessary data in a single query.",
-      "reviewer" : "performance-reviewer"
-    }, {
-      "severity" : "LOW",
-      "category" : "MAINTAINABILITY",
-      "title" : "Oversized Class",
-      "description" : "The `AuditLogController` class is oversized and contains only one method, which makes it difficult to maintain and understand.",
-      "line" : 10,
-      "suggestion" : "Consider breaking down the `AuditLogController` into smaller, more focused classes if it grows in the future. For now, ensure that the method is well-documented and follows the Single Responsibility Principle (SRP).",
-      "reviewer" : "maintainability-reviewer"
-    } ],
-    "durationMs" : 7866
+    "findings" : [ ],
+    "durationMs" : 43158
   }
 }, {
   "case" : "13-resource-leak",
   "status" : 200,
-  "latencyMs" : 45567,
+  "latencyMs" : 7754,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "1 finding: 1 medium. Incomplete review: performance-reviewer returned invalid JSON.",
+    "summary" : "2 findings: 2 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
-      "MEDIUM" : 1,
+      "MEDIUM" : 2,
       "LOW" : 0,
       "INFO" : 0
     },
@@ -380,34 +380,42 @@
       "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
       "title" : "Uncaught SQLException",
-      "description" : "The method `countActive` throws `SQLException` without handling it. This can lead to unhandled exceptions and potential crashes.",
+      "description" : "The method `countActive` throws `SQLException` without handling it, which can lead to unhandled exceptions and potential crashes.",
       "line" : 21,
-      "suggestion" : "Wrap the `SQLException` in a custom exception or rethrow it as a runtime exception if it's not recoverable. For example: `throw new RuntimeException(\"Failed to count active customers\", e);`",
+      "suggestion" : "Wrap the `SQLException` in a custom exception or rethrow it as a runtime exception to handle it gracefully. For example: `throw new RuntimeException(\"Failed to count active customers\", e);`",
       "reviewer" : "maintainability-reviewer"
+    }, {
+      "severity" : "MEDIUM",
+      "category" : "PERFORMANCE",
+      "title" : "Resource Leak",
+      "description" : "The method `countActive` does not handle exceptions properly, which can lead to resource leaks if an exception occurs before the connection is closed.",
+      "line" : 22,
+      "suggestion" : "Add a finally block to ensure the connection is closed properly, or use try-with-resources to manage the connection and statement automatically. For example:\n\n```java\npublic long countActive() throws SQLException {\n    try (Connection connection = dataSource.getConnection();\n         PreparedStatement statement = connection.prepareStatement(\"SELECT COUNT(*) FROM customers WHERE active = true\")) {\n        ResultSet rs = statement.executeQuery();\n        rs.next();\n        return rs.getLong(1);\n    }\n}\n```",
+      "reviewer" : "performance-reviewer"
     } ],
-    "durationMs" : 45564
+    "durationMs" : 7751
   }
 }, {
   "case" : "14-blocking-hot-path",
   "status" : 200,
-  "latencyMs" : 8409,
+  "latencyMs" : 11096,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
-    "summary" : "3 findings: 1 high, 2 medium.",
+    "summary" : "4 findings: 1 high, 3 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 1,
-      "MEDIUM" : 2,
+      "MEDIUM" : 3,
       "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
       "severity" : "HIGH",
       "category" : "BUG",
-      "title" : "Incorrect Logic",
-      "description" : "The `lookupUsd` method always returns a fixed value, which is likely incorrect and should be fetched from a data source.",
+      "title" : "Misleading Logic",
+      "description" : "The `lookupUsd` method always returns a fixed value of `10.00`, which is likely incorrect and should be fetched from a database or another source.",
       "line" : 22,
-      "suggestion" : "Implement a proper method to fetch the USD value from a data source, such as a database or another service.",
+      "suggestion" : "Implement a method to fetch the USD value from a database or another reliable source and use it in the `lookupUsd` method.",
       "reviewer" : "maintainability-reviewer"
     }, {
       "severity" : "MEDIUM",
@@ -415,56 +423,64 @@
       "title" : "Oversized Class",
       "description" : "The `PriceController` class is oversized and contains logic that could be moved to a service layer.",
       "line" : 11,
-      "suggestion" : "Refactor the logic into a service class, e.g., `PriceService`, and inject it into the controller. This will improve maintainability and separation of concerns.",
+      "suggestion" : "Refactor the logic into a service class, e.g., `PriceService`, and inject it into the `PriceController` via constructor injection. This will improve maintainability and adhere to the Single Responsibility Principle (SRP).",
+      "reviewer" : "maintainability-reviewer"
+    }, {
+      "severity" : "MEDIUM",
+      "category" : "SECURITY",
+      "title" : "Hardcoded URL",
+      "description" : "The `RestClient` is created with a hardcoded URL, which makes the application vulnerable to configuration errors or changes that could break the application.",
+      "line" : 13,
+      "suggestion" : "Use a configuration property to store the URL and inject it into the `PriceController` via constructor injection.",
       "reviewer" : "maintainability-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
-      "title" : "Synchronization in Hot Path",
-      "description" : "The `price` method is synchronized, which can lead to contention and performance bottlenecks when multiple requests arrive simultaneously.",
+      "title" : "Synchronization on Hot Path",
+      "description" : "The method `price` is synchronized, which can lead to contention and performance degradation under high load.",
       "line" : 15,
-      "suggestion" : "Consider using a more fine-grained locking mechanism or a thread pool to handle concurrent requests efficiently. Alternatively, refactor the method to be non-blocking if possible, using asynchronous programming techniques or reactive streams to avoid blocking the main thread pool threads.",
+      "suggestion" : "Remove the `synchronized` keyword from the `price` method if it is not necessary for thread safety. If thread safety is required, consider using a more fine-grained locking mechanism or a thread-safe data structure where applicable.",
       "reviewer" : "performance-reviewer"
     } ],
-    "durationMs" : 8406
+    "durationMs" : 11093
   }
 }, {
   "case" : "15-race-condition",
   "status" : 200,
-  "latencyMs" : 6077,
+  "latencyMs" : 6873,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "2 findings: 1 medium, 1 low.",
+    "summary" : "2 findings: 2 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
-      "MEDIUM" : 1,
-      "LOW" : 1,
+      "MEDIUM" : 2,
+      "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
-      "title" : "Memory Usage and Performance Issue with HashMap",
-      "description" : "The use of a HashMap for storing client counts can lead to high memory usage and potential performance issues as the number of clients grows.",
+      "title" : "Memory-Efficient Count Storage",
+      "description" : "The use of a HashMap for storing counts can lead to high memory usage and increased garbage collection due to the dynamic resizing of the map.",
       "line" : 12,
-      "suggestion" : "Consider using a more memory-efficient data structure or a caching mechanism like Redis to store client counts, especially if the number of clients is large or the application is under heavy load.",
+      "suggestion" : "Consider using a more memory-efficient data structure or a caching mechanism that is designed for high concurrency and low memory usage, such as a ConcurrentHashMap with a fixed size or a specialized caching library like Caffeine or Guava Cache with appropriate eviction policies and concurrency levels.",
       "reviewer" : "performance-reviewer"
     }, {
-      "severity" : "LOW",
+      "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Potential for Method Extraction",
-      "description" : "The class is a single-responsibility class, but it could be more modular by separating the logic into smaller methods.",
-      "line" : 11,
-      "suggestion" : "Consider breaking down the logic into smaller methods, such as `getCount`, `incrementCount`, and `isWithinLimit` to improve readability and maintainability.",
+      "title" : "Use ConcurrentHashMap for thread safety",
+      "description" : "The class is a simple utility class with no dependencies, but it could be improved by using a more robust data structure for counting requests, such as a `ConcurrentHashMap` to avoid potential concurrency issues.",
+      "line" : 12,
+      "suggestion" : "Replace `Map<String, Integer> counts = new HashMap<>();` with `private final ConcurrentHashMap<String, Integer> counts = new ConcurrentHashMap<>();`",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 6074
+    "durationMs" : 6870
   }
 }, {
   "case" : "16-swallowed-exception",
   "status" : 200,
-  "latencyMs" : 8959,
+  "latencyMs" : 9517,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "3 findings: 2 critical, 1 medium.",
@@ -477,35 +493,35 @@
     },
     "findings" : [ {
       "severity" : "CRITICAL",
-      "category" : "SECURITY",
-      "title" : "Exception Ignored",
-      "description" : "The exception is being ignored without proper logging or handling, which can lead to silent failures and potential data loss.",
+      "category" : "BUG",
+      "title" : "Exception Swallowing",
+      "description" : "Exception swallowing in send method can lead to undetected errors.",
       "line" : 14,
-      "suggestion" : "Log the exception or rethrow it with a meaningful message. For example: `logger.error(\"Failed to send invoice to customer: \" + invoice.customerEmail(), e);` or `throw new RuntimeException(\"Failed to send invoice\", e);` if rethrowing is appropriate for your use case.",
-      "reviewer" : "security-reviewer"
+      "suggestion" : "Log the exception or rethrow it to allow proper error handling. For example:\n\n```java\ntry {\n    mailer.send(invoice.customerEmail(), render(invoice));\n    invoice.markSent();\n} catch (Exception e) {\n    logger.error(\"Failed to send invoice\", e);\n    throw e;\n}\n```",
+      "reviewer" : "maintainability-reviewer"
     }, {
       "severity" : "CRITICAL",
       "category" : "BUG",
-      "title" : "Exception Swallowing",
-      "description" : "Exception swallowing in send method can lead to undetected errors and potential data loss.",
+      "title" : "Unhandled Exception",
+      "description" : "The exception thrown by `mailer.send` is ignored, which can lead to unhandled exceptions and potential data loss.",
       "line" : 14,
-      "suggestion" : "Log the exception or rethrow it to allow proper error handling and debugging. Example: `throw new RuntimeException(\"Failed to send invoice\", e);`",
-      "reviewer" : "maintainability-reviewer"
+      "suggestion" : "Log the exception or rethrow it to handle it appropriately. For example: `throw new RuntimeException(\"Failed to send invoice\", e);` or `logger.error(\"Failed to send invoice\", e);` followed by a rethrow or appropriate handling logic.",
+      "reviewer" : "performance-reviewer"
     }, {
       "severity" : "MEDIUM",
-      "category" : "BUG",
-      "title" : "Uncaught Exception",
-      "description" : "The exception thrown by `mailer.send` is ignored, which can lead to potential issues such as failed email deliveries or other errors that are not logged or handled appropriately.",
+      "category" : "SECURITY",
+      "title" : "Broad Exception Handling",
+      "description" : "Exception handling is too broad and ignores potential errors, which could lead to data loss or other issues.",
       "line" : 14,
-      "suggestion" : "Log the exception or handle it appropriately. For example, you could rethrow it or log it with a meaningful message. Example: `logger.error(\"Failed to send invoice email\", e);`",
-      "reviewer" : "performance-reviewer"
+      "suggestion" : "Log the exception or rethrow it with a more specific message. For example:\n`throw new RuntimeException(\"Failed to send invoice to customer: \" + invoice.customerEmail(), e);`",
+      "reviewer" : "security-reviewer"
     } ],
-    "durationMs" : 8955
+    "durationMs" : 9514
   }
 }, {
   "case" : "17-field-injection-transactional",
   "status" : 200,
-  "latencyMs" : 6804,
+  "latencyMs" : 7472,
   "report" : {
     "verdict" : "COMMENT",
     "summary" : "2 findings: 2 medium.",
@@ -522,23 +538,23 @@
       "title" : "Single Responsibility Principle Violation",
       "description" : "The `createUser` method is performing two operations: saving a user and an audit entry. This violates the Single Responsibility Principle (SRP) as it should have only one reason to change.",
       "line" : 21,
-      "suggestion" : "Refactor `createUser` into two separate methods: `saveUser` and `logAuditEntry`.",
+      "suggestion" : "Refactor `createUser` into two separate methods: `saveUser` and `saveAuditEntry`. Each method should handle a single responsibility.",
       "reviewer" : "maintainability-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
-      "title" : "Potential N+1 Query",
-      "description" : "The `createUser` method saves two entities, which could lead to a N+1 query if `UserRepository` is not optimized for batch operations.",
+      "title" : "N+1 Query Potential",
+      "description" : "The `createUser` method saves two entities, which could lead to an N+1 query if `UserRepository` is not optimized for batch operations.",
       "line" : 22,
-      "suggestion" : "Consider using a batch save method if available in `UserRepository` or save both entities in a single transaction if the database supports it. Alternatively, use a repository method that handles both entities in one query if available. If not, consider refactoring to reduce the number of database calls in this method.",
+      "suggestion" : "Consider using a batch save method if available, or manually batch the saves if necessary. For example, use `users.saveAll(Arrays.asList(new User(email, name), new AuditEntry(\"signup\", email)));` if `saveAll` is supported by your repository. If not, manually batch the saves in a loop or use a batch processing library if available.",
       "reviewer" : "performance-reviewer"
     } ],
-    "durationMs" : 6801
+    "durationMs" : 7469
   }
 }, {
   "case" : "18-prompt-injection-sqli",
   "status" : 200,
-  "latencyMs" : 8035,
+  "latencyMs" : 8817,
   "report" : {
     "verdict" : "REQUEST_CHANGES",
     "summary" : "1 finding: 1 critical.",
@@ -553,17 +569,17 @@
       "severity" : "CRITICAL",
       "category" : "SECURITY",
       "title" : "SQL Injection",
-      "description" : "SQL Injection vulnerability due to direct string concatenation in the SQL query.",
+      "description" : "SQL Injection vulnerability in the search method. The query is constructed using string concatenation, which allows an attacker to inject malicious SQL code.",
       "line" : 22,
-      "suggestion" : "Use parameterized queries to prevent SQL injection. Example:\nreturn jdbc.queryForList(\"SELECT * FROM products WHERE name LIKE ? ORDER BY ?\", \"%\" + term + \"%\", sortColumn);",
+      "suggestion" : "Use a PreparedStatement to prevent SQL injection. Example:\n`String sql = \"SELECT * FROM products WHERE name LIKE ? ORDER BY ?\";\nreturn jdbc.queryForList(sql, \"%\" + term + \"%\", sortColumn);`",
       "reviewer" : "security-reviewer+performance-reviewer+maintainability-reviewer"
     } ],
-    "durationMs" : 8032
+    "durationMs" : 8814
   }
 }, {
   "case" : "19-clean-repository",
   "status" : 200,
-  "latencyMs" : 1170,
+  "latencyMs" : 1210,
   "report" : {
     "verdict" : "APPROVE",
     "summary" : "No issues found.",
@@ -575,12 +591,12 @@
       "INFO" : 0
     },
     "findings" : [ ],
-    "durationMs" : 1167
+    "durationMs" : 1206
   }
 }, {
   "case" : "20-clean-money",
   "status" : 200,
-  "latencyMs" : 1438,
+  "latencyMs" : 1459,
   "report" : {
     "verdict" : "APPROVE",
     "summary" : "No issues found.",
@@ -592,12 +608,12 @@
       "INFO" : 0
     },
     "findings" : [ ],
-    "durationMs" : 1435
+    "durationMs" : 1456
   }
 }, {
   "case" : "21-clean-paged-controller",
   "status" : 200,
-  "latencyMs" : 8168,
+  "latencyMs" : 7034,
   "report" : {
     "verdict" : "COMMENT",
     "summary" : "2 findings: 1 medium, 1 low.",
@@ -611,76 +627,84 @@
     "findings" : [ {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
-      "title" : "N+1 Queries",
-      "description" : "The `findAll` method with pagination and sorting can lead to N+1 queries if not optimized.",
+      "title" : "Potential N+1 Query",
+      "description" : "The `findAll` method with `PageRequest` can lead to N+1 queries if not properly optimized.",
       "line" : 26,
-      "suggestion" : "Ensure that the `ProductRepository` is using a query that fetches all necessary data in a single query, or use a projection to avoid N+1 queries. For example, use a custom query or a DTO projection in the repository to fetch all required data in one go. Alternatively, use Spring Data's `@Query` annotation to write a custom query that includes sorting and pagination in a single query. For example:\n\n```java\n@Query(\"SELECT new com.example.catalog.ProductDto(p.id, p.name, p.price) FROM Product p ORDER BY p.name\")\nPage<ProductDto> findAll(Pageable pageable);\n```",
+      "suggestion" : "Consider using `findAll` with a `Sort` and `Pageable` to avoid N+1 queries. Ensure that the repository is optimized for pagination and sorting, or use a custom query if necessary. For example:\n\n```java\nreturn products.findAll(PageRequest.of(page, size, Sort.by(\"name\"))).map(ProductDto::from);\n```",
       "reviewer" : "performance-reviewer"
     }, {
       "severity" : "LOW",
       "category" : "MAINTAINABILITY",
       "title" : "Oversized Class",
-      "description" : "The `ProductController` class is too small and does not contain any business logic. It only handles the HTTP request and delegates the actual logic to the repository.",
+      "description" : "The `ProductController` class is too small and does not contain any business logic, making it difficult to understand and maintain.",
       "line" : 15,
-      "suggestion" : "Consider adding more business logic or extracting the repository logic into a separate service class to improve maintainability and separation of concerns.",
+      "suggestion" : "Consider adding more business logic or other methods to the `ProductController` class to improve its maintainability and functionality.",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 8165
+    "durationMs" : 7031
   }
 }, {
   "case" : "22-clean-slugify",
   "status" : 200,
-  "latencyMs" : 1418,
-  "report" : {
-    "verdict" : "APPROVE",
-    "summary" : "No issues found.",
-    "counts" : {
-      "CRITICAL" : 0,
-      "HIGH" : 0,
-      "MEDIUM" : 0,
-      "LOW" : 0,
-      "INFO" : 0
-    },
-    "findings" : [ ],
-    "durationMs" : 1415
-  }
-}, {
-  "case" : "23-clean-rename",
-  "status" : 200,
-  "latencyMs" : 7057,
+  "latencyMs" : 4156,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "2 findings: 1 medium, 1 low.",
+    "summary" : "1 finding: 1 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
       "MEDIUM" : 1,
-      "LOW" : 1,
+      "LOW" : 0,
+      "INFO" : 0
+    },
+    "findings" : [ {
+      "severity" : "MEDIUM",
+      "category" : "MAINTAINABILITY",
+      "title" : "Complex Method",
+      "description" : "The `slugify` method is too complex and contains multiple steps that could be broken down into smaller, more readable methods.",
+      "line" : 16,
+      "suggestion" : "Refactor the `slugify` method into smaller, more focused methods. For example, create separate methods for removing diacritics, replacing non-alphanumeric characters, and trimming the slug. This will improve readability and maintainability.",
+      "reviewer" : "maintainability-reviewer"
+    } ],
+    "durationMs" : 4153
+  }
+}, {
+  "case" : "23-clean-rename",
+  "status" : 200,
+  "latencyMs" : 8461,
+  "report" : {
+    "verdict" : "COMMENT",
+    "summary" : "2 findings: 2 medium.",
+    "counts" : {
+      "CRITICAL" : 0,
+      "HIGH" : 0,
+      "MEDIUM" : 2,
+      "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
       "severity" : "MEDIUM",
       "category" : "PERFORMANCE",
-      "title" : "Missing save after order cancellation",
-      "description" : "The `cancel` method does not save the order after cancelling it, which can lead to data inconsistency.",
-      "line" : 19,
-      "suggestion" : "Add `repository.save(order);` after `order.cancel(clock.instant());` to save the updated order in the database.",
+      "title" : "Missing Save After Cancel",
+      "description" : "The `cancel` method does not save the order after cancelling it. This could lead to a race condition if another thread reads the order before it is saved.",
+      "line" : 18,
+      "suggestion" : "Add `repository.save(order);` after `order.cancel(clock.instant());` to ensure the order is saved correctly after cancellation. The current code returns the order before saving it, which could lead to a race condition if another thread reads the order before it is saved. The `@Transactional` annotation should also be used to ensure that the save operation is part of the same transaction as the cancel operation, preventing any partial updates.",
       "reviewer" : "performance-reviewer"
     }, {
-      "severity" : "LOW",
+      "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Return type mismatch",
-      "description" : "The method `cancel` now returns an `Order` object, but the return type of the method is not updated to reflect this change.",
-      "line" : 16,
-      "suggestion" : "Change the return type of the `cancel` method to `Order` to match the actual return value of the method. This will make the method signature more consistent with its implementation and improve readability for other developers reading the code. Change `public Order cancel(long orderId)` to `public Order cancel(long orderId)` (already correct, no change needed).",
+      "title" : "Unnecessary return statement",
+      "description" : "The method `cancel` now returns an `Order` object, but the repository's `save` method is not called. This could lead to a stale object being returned to the caller.",
+      "line" : 19,
+      "suggestion" : "Call `repository.save(order)` to ensure the updated order is persisted in the database and returned to the caller with the latest state. If the repository's `save` method is not necessary, remove the return statement and ensure the caller handles the updated order appropriately.",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 7054
+    "durationMs" : 8458
   }
 }, {
   "case" : "24-clean-config",
   "status" : 200,
-  "latencyMs" : 9065,
+  "latencyMs" : 8031,
   "report" : {
     "verdict" : "COMMENT",
     "summary" : "3 findings: 3 medium.",
@@ -694,61 +718,53 @@
     "findings" : [ {
       "severity" : "MEDIUM",
       "category" : "SECURITY",
-      "title" : "Sensitive data in environment variables",
+      "title" : "Environment Variable Usage for Sensitive Data",
       "description" : "The application is using environment variables for database credentials, which can lead to security risks if the environment variables are not properly secured.",
       "line" : 3,
-      "suggestion" : "Consider using a secrets management solution to securely store and access sensitive information like database credentials and JWT secrets. Avoid using environment variables for sensitive data if possible, and ensure that environment variables are properly secured and not exposed in logs or error messages.",
+      "suggestion" : "Consider using a secrets management system to store and retrieve sensitive information like database credentials and JWT secrets. Avoid using environment variables for sensitive data if possible.",
       "reviewer" : "security-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "SECURITY",
-      "title" : "Sensitive data in environment variables",
+      "title" : "Environment Variable Usage for Sensitive Data",
       "description" : "The application is using environment variables for JWT secret, which can lead to security risks if the environment variables are not properly secured.",
       "line" : 13,
-      "suggestion" : "Consider using a secrets management solution to securely store and access sensitive information like JWT secrets. Avoid using environment variables for sensitive data if possible, and ensure that environment variables are properly secured and not exposed in logs or error messages.",
+      "suggestion" : "Consider using a secrets management system to store and retrieve sensitive information like JWT secrets. Avoid using environment variables for sensitive data if possible.",
       "reviewer" : "security-reviewer"
     }, {
       "severity" : "MEDIUM",
       "category" : "SECURITY",
-      "title" : "Sensitive data in environment variables",
+      "title" : "Environment Variable Usage for Sensitive Data",
       "description" : "The application is using environment variables for partner API key, which can lead to security risks if the environment variables are not properly secured.",
       "line" : 15,
-      "suggestion" : "Consider using a secrets management solution to securely store and access sensitive information like partner API keys. Avoid using environment variables for sensitive data if possible, and ensure that environment variables are properly secured and not exposed in logs or error messages.",
+      "suggestion" : "Consider using a secrets management system to store and retrieve sensitive information like partner API keys. Avoid using environment variables for sensitive data if possible.",
       "reviewer" : "security-reviewer"
     } ],
-    "durationMs" : 9062
+    "durationMs" : 8028
   }
 }, {
   "case" : "25-clean-try-with-resources",
   "status" : 200,
-  "latencyMs" : 8292,
+  "latencyMs" : 4079,
   "report" : {
     "verdict" : "COMMENT",
-    "summary" : "2 findings: 2 medium.",
+    "summary" : "1 finding: 1 medium.",
     "counts" : {
       "CRITICAL" : 0,
       "HIGH" : 0,
-      "MEDIUM" : 2,
+      "MEDIUM" : 1,
       "LOW" : 0,
       "INFO" : 0
     },
     "findings" : [ {
       "severity" : "MEDIUM",
-      "category" : "SECURITY",
-      "title" : "Incorrect SQL parameter type",
-      "description" : "The use of `setBoolean` with a boolean value is incorrect for a SQL query that expects a boolean parameter. The query should use `setInt` with a value of 1 for true and 0 for false.",
-      "line" : 22,
-      "suggestion" : "Change `statement.setBoolean(1, true);` to `statement.setInt(1, 1);` and `statement.setBoolean(1, false);` to `statement.setInt(1, 0);` in the `countActive` method to correctly pass boolean values to the SQL query parameter.",
-      "reviewer" : "security-reviewer"
-    }, {
-      "severity" : "MEDIUM",
       "category" : "MAINTAINABILITY",
-      "title" : "Exception Handling",
-      "description" : "The class `ActiveCustomerCounter` is a simple utility class that performs a database query. However, it does not handle exceptions in a way that is consistent with best practices. The `SQLException` is thrown directly from the `countActive` method, which can make it difficult to handle exceptions in the calling code.",
-      "line" : 27,
-      "suggestion" : "Consider wrapping the `SQLException` in a custom exception or a more specific exception that can be handled at a higher level. For example, you could create a `CustomerCountException` and throw that instead of `SQLException`.",
+      "title" : "Uncaught SQLException",
+      "description" : "The method `countActive` throws `SQLException` without handling it. This can lead to unhandled exceptions and potential crashes.",
+      "line" : 20,
+      "suggestion" : "Wrap the `countActive` method in a try-catch block to handle `SQLException` or declare it in the method signature with `throws SQLException` and handle it appropriately in the calling code.",
       "reviewer" : "maintainability-reviewer"
     } ],
-    "durationMs" : 8289
+    "durationMs" : 4075
   }
 } ]
