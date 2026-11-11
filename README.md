@@ -146,6 +146,17 @@ workflow that builds this service inside the job, runs Ollama as a service conta
 cached between runs), and calls the script. Set `REVIEWER_PROFILE: claude` and an `ANTHROPIC_API_KEY`
 secret to use Claude instead.
 
+The workflow was tested on a real pull request ([#1](https://github.com/dev-danilocordeiro/ai-code-reviewer/pull/1),
+closed without merging) that added a file with an OS command injection:
+
+- **First attempt, with the service defaults:** all three specialists timed out at 180 s on the
+  CPU-only GitHub runner, the incomplete review came back as `COMMENT`, and **the PR passed**.
+- **With the settings now in the example:** the PR **failed with `REQUEST_CHANGES`**, reporting the
+  injection on the exact diff line. The review took 544 s. The example now fails closed
+  (`on-reviewer-failure=REQUEST_CHANGES`), sends one call at a time, and allows 900 s per call.
+
+For anything interactive, use a GPU or the `claude` profile. CPU-only CI works, but it is slow.
+
 ## Tests
 
 ```bash
@@ -183,37 +194,42 @@ duplicate reported under a different category. That makes the false positive num
 
 ### Results
 
-| | `ollama-qwen2.5-coder-7b` | `claude` profile |
-|---|---|---|
-| Planted issues detected | **15 / 20 (75%)** | not run yet |
-| Cases with planted issues that got `REQUEST_CHANGES` | 12 / 18 | not run yet |
-| Clean cases approved | **2 / 7** | not run yet |
-| False positives, all severities | 28 (1.1 per case) | not run yet |
-| False positives, MEDIUM or worse | 27 | not run yet |
-| Incomplete reviews | 1 | not run yet |
-| Latency p50 / p95 / max | 8.1 s / 15.4 s / 43.2 s | not run yet |
+Two runs of the same 25 cases with `qwen2.5-coder:7b`, about 15 minutes apart. The only code change
+between them was dropping category from dedupe. Re-applying the new rule to run A's raw reports
+merges nothing, so the differences below are run-to-run model variance.
 
-Single run on 2026-11-11 with Ollama 0.34.4 on an AMD Radeon RX 7600 (8 GB), defaults from
-`application.yml` (temperature 0.1, num-ctx 8192, num-predict 2048). Per-case table and raw reports:
-[`evals/results/ollama-qwen2.5-coder-7b.md`](evals/results/ollama-qwen2.5-coder-7b.md) and `.json`.
-One run is not a distribution: in an earlier run the same day, the resource leak in case 13 was found,
-and here it was missed.
+| | Run A | Run B | `claude` profile |
+|---|---|---|---|
+| Planted issues detected | 15 / 20 | 15 / 20 | not run yet |
+| Cases with planted issues that got `REQUEST_CHANGES` | 12 / 18 | 12 / 18 | not run yet |
+| Clean cases approved | 2 / 7 | 3 / 7 | not run yet |
+| False positives, all severities | 28 | 26 | not run yet |
+| False positives, MEDIUM or worse | 27 | 21 | not run yet |
+| Incomplete reviews | 1 | 2 | not run yet |
+| Latency p50 / p95 / max | 8.1 / 15.4 / 43.2 s | 8.0 / 45.6 / 47.5 s | not run yet |
+
+Both runs used Ollama 0.34.4 on an AMD Radeon RX 7600 (8 GB) with the defaults from `application.yml`
+(temperature 0.1, num-ctx 8192, num-predict 2048), on 2026-11-11. Run B's per-case table and raw
+reports are in [`evals/results/`](evals/results/). Run A's are in the git history (commit `0a0d60e`).
 
 What the numbers say about the 7B model:
 
+- **The total is stable, but the individual cases are not.** Both runs detected 15 of 20, but not
+  the same 15. The race condition (case 15) was found in A and missed in B, and the unbounded
+  `findAll()` (case 12) the other way around.
 - **It finds the obvious security bugs reliably and misses subtler ones.** Every injection, XSS,
-  SSRF, deserialization, traversal, weak hash, secret and logged password was found. It missed
-  the unprotected `@DeleteMapping` next to protected endpoints, `@Transactional` on a private
-  self-invoked method, field injection, an unclosed JDBC connection, and an unbounded `findAll()`.
-- **Precision is poor.** Only 2 of the 7 clean files were approved, and 27 of the 28 false positives
-  were MEDIUM or worse, so they move the verdict. Common patterns: calling a 20-line class
+  SSRF, deserialization, traversal, weak hash, secret and logged password was found in both runs.
+  Both runs missed the unprotected `@DeleteMapping` next to protected endpoints, `@Transactional`
+  on a private self-invoked method, field injection, and the unclosed JDBC connection.
+- **Precision is poor.** Only 2 or 3 of the 7 clean files were approved, and most false positives
+  are MEDIUM or worse, so they move the verdict. Common patterns: calling a 20-line class
   "oversized", treating `${ENV_VAR}` placeholders in config as a security issue, and reporting
   outside its "look ONLY for" scope.
-- **The prompt-injection case kept its verdict.** The SQL injection in `18-prompt-injection-sqli`
-  was reported and the case got `REQUEST_CHANGES`.
-- **The one incomplete review is the runaway-generation case working as intended.** The performance
-  reviewer hit `num-predict` after 43 s, the truncated JSON was reported as `returned invalid JSON`,
-  and the report still came back.
+- **The prompt-injection case kept its verdict in both runs.** The SQL injection in
+  `18-prompt-injection-sqli` was reported and the case got `REQUEST_CHANGES`.
+- **The incomplete reviews are runaway generations stopped by `num-predict`.** They are the reason
+  for the 43 to 48 s latencies. The truncated JSON was reported as `returned invalid JSON` and the
+  report still came back.
 
 An earlier run scored by category and line alone came out at 18/20. Reading those findings showed
 that some "hits" were a different problem sitting on the right line (for example "Memory-Efficient
