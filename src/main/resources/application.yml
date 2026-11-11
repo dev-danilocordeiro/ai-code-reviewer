@@ -12,10 +12,16 @@ spring:
       # Must exceed reviewer.timeout-seconds, otherwise the HTTP call to the model dies first.
       connect-timeout: 10s
       read-timeout: 200s
+      # Boot picks reactor-netty here (Spring AI brings it). Keep it: when a timed-out call is
+      # cancelled it closes the connection and Ollama stops generating. The JDK 21 HttpClient does not.
   ai:
     model:
       chat: ollama          # the "claude" profile switches this to anthropic
       embedding: none
+    retry:
+      # No retries. The orchestrator owns the time budget and reports failures. With retries on, a call
+      # cancelled by the timeout is caught as an error and re-sent, leaving zombie requests on the model server.
+      max-attempts: 1
     ollama:
       base-url: http://localhost:11434
       init:
@@ -27,6 +33,8 @@ spring:
         model: qwen2.5-coder:7b
         temperature: 0.1
         num-ctx: 8192
+        # Caps runaway generations (small models in JSON mode sometimes emit whitespace forever).
+        num-predict: 2048
     anthropic:
       # Present so the starter can bind without a key; only used when spring.ai.model.chat=anthropic.
       api-key: ${ANTHROPIC_API_KEY:unset}
