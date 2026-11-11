@@ -42,7 +42,7 @@ flowchart LR
   It is raised to at least `COMMENT`, which is configurable.
 - **Post-processing.** Findings without a severity or title are dropped, the reviewer id is set by
   the orchestrator (never trusted from the model), and out-of-range line numbers are cleared.
-  Duplicates (same line, same category, overlapping title tokens) are merged and the most severe one
+  Duplicates (same line, overlapping title tokens, any category) are merged and the most severe one
   is kept. The result is sorted by severity, then line.
 
 ## Run it in 5 minutes
@@ -123,7 +123,7 @@ input exceeds the limits (with `maxInputChars`), `500` otherwise. Actuator expos
 | `reviewer.timeout-seconds` | `180` | Per call, counted from when the call starts (not while it is queued). |
 | `reviewer.max-concurrent-calls` | `3` | Model calls in flight across all requests. |
 | `reviewer.native-structured-output` | `true` | Ask the provider for schema-constrained JSON. |
-| `reviewer.title-similarity` | `0.6` | Token overlap above which two findings on the same line and category are duplicates. |
+| `reviewer.title-similarity` | `0.6` | Token overlap above which two findings on the same line are duplicates (category is ignored). |
 | `reviewer.verdict.request-changes-at` | `HIGH` | Any finding at or above this severity yields `REQUEST_CHANGES`. |
 | `reviewer.verdict.comment-at` | `INFO` | Otherwise, any finding at or above this yields `COMMENT`. With none, the verdict is `APPROVE`. |
 | `reviewer.verdict.on-reviewer-failure` | `COMMENT` | Lowest verdict when a specialist failed. |
@@ -228,8 +228,8 @@ The Claude column is empty because no `ANTHROPIC_API_KEY` was available when thi
 - **LLM recall is not a guarantee.** A model can miss issues or be persuaded by text in the code to
   report fewer. The verdict logic and the secret scanner cannot be talked out of anything, but a
   suppressed finding is still a missed finding.
-- **Dedupe is per category.** The same SQL injection reported as `SECURITY` by one specialist and as
-  `BUG` by another shows up twice.
+- **Dedupe is title-based.** Two findings on the same line merge only when their titles share enough
+  tokens, so "Path Traversal" and "Directory Traversal Vulnerability" on one line stay separate.
 - **Line numbers refer to the submitted content.** For a diff, that is the line in the diff, not in
   the new file.
 - **One file at a time is context-free.** The reviewers do not see the rest of the code base, so they

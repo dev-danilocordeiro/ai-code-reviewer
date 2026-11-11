@@ -19,7 +19,7 @@ import java.time.Duration;
  * @param timeoutSeconds         per-specialist, per-chunk time budget, counted from when the call starts
  * @param maxConcurrentCalls     model calls in flight at once across all requests (local models serialize anyway)
  * @param nativeStructuredOutput ask the provider for schema-constrained JSON when it supports it
- * @param titleSimilarity        token overlap (0..1) above which two findings on the same line and category are duplicates
+ * @param titleSimilarity        token overlap (0..1) above which two findings on the same line are duplicates
  */
 @Validated
 @ConfigurationProperties(prefix = "reviewer")

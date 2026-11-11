@@ -67,14 +67,26 @@ class FindingMergerTest {
     }
 
     @Test
-    void mergeKeepsFindingsThatDifferInLineCategoryOrTitle() {
+    void mergeKeepsFindingsThatDifferInLineOrTitle() {
         List<Finding> merged = merger.merge(List.of(
                 f(HIGH, SECURITY, "SQL injection", 12, "a"),
                 f(HIGH, SECURITY, "SQL injection", 13, "a"),
-                f(HIGH, BUG, "SQL injection", 12, "a"),
                 f(HIGH, SECURITY, "Weak hashing algorithm", 12, "a")));
 
-        assertThat(merged).hasSize(4);
+        assertThat(merged).hasSize(3);
+    }
+
+    @Test
+    void mergeCollapsesTheSameProblemFiledUnderDifferentCategories() {
+        List<Finding> merged = merger.merge(List.of(
+                f(HIGH, BUG, "SQL Injection", 19, "maintainability-reviewer"),
+                f(CRITICAL, SECURITY, "SQL Injection", 19, "security-reviewer")));
+
+        assertThat(merged).singleElement().satisfies(x -> {
+            assertThat(x.category()).isEqualTo(SECURITY);
+            assertThat(x.severity()).isEqualTo(CRITICAL);
+            assertThat(x.reviewer()).isEqualTo("security-reviewer+maintainability-reviewer");
+        });
     }
 
     @Test

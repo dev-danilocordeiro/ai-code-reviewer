@@ -51,7 +51,11 @@ public class FindingMerger {
         return out;
     }
 
-    /** Merges duplicates (same line, same category, equivalent title) keeping the most severe, then sorts. */
+    /**
+     * Merges duplicates (same line, equivalent title) keeping the most severe, then sorts. Category is
+     * ignored on purpose: specialists often file the same problem under different categories
+     * (an SQL injection as SECURITY and as BUG), and reporting it twice is noise.
+     */
     public List<Finding> merge(List<Finding> findings) {
         List<Finding> sorted = findings.stream().sorted(ORDER).toList();
         List<Finding> kept = new ArrayList<>();
@@ -73,7 +77,6 @@ public class FindingMerger {
         for (int i = 0; i < kept.size(); i++) {
             Finding k = kept.get(i);
             if (Objects.equals(k.line(), candidate.line())
-                    && k.category() == candidate.category()
                     && similarity(k.title(), candidate.title()) >= titleSimilarity) {
                 return i;
             }
