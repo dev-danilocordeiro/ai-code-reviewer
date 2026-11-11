@@ -16,7 +16,8 @@ import java.time.Duration;
 /**
  * @param maxInputChars          largest single unit (file, or one file of a diff) sent to the specialists
  * @param maxChunks              upper bound on files reviewed from one diff, to cap cost and latency
- * @param timeoutSeconds         per-specialist, per-chunk time budget
+ * @param timeoutSeconds         per-specialist, per-chunk time budget, counted from when the call starts
+ * @param maxConcurrentCalls     model calls in flight at once across all requests (local models serialize anyway)
  * @param nativeStructuredOutput ask the provider for schema-constrained JSON when it supports it
  * @param titleSimilarity        token overlap (0..1) above which two findings on the same line and category are duplicates
  */
@@ -26,6 +27,7 @@ public record ReviewerProperties(
         @DefaultValue("24000") @Min(1000) int maxInputChars,
         @DefaultValue("20") @Min(1) int maxChunks,
         @DefaultValue("180") @Min(1) int timeoutSeconds,
+        @DefaultValue("3") @Min(1) int maxConcurrentCalls,
         @DefaultValue("true") boolean nativeStructuredOutput,
         @DefaultValue("0.6") @DecimalMin("0.0") @DecimalMax("1.0") double titleSimilarity,
         @DefaultValue @Valid @NotNull VerdictRule verdict) {

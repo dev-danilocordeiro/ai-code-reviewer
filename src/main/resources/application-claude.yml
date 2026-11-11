@@ -1,0 +1,19 @@
+# Run with: ANTHROPIC_API_KEY=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=claude
+spring:
+  ai:
+    model:
+      chat: anthropic
+    ollama:
+      init:
+        pull-model-strategy: never
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        model: ${ANTHROPIC_MODEL:claude-sonnet-5-5}
+        temperature: 0.1
+        max-tokens: 4096
+
+reviewer:
+  # Hosted API: more parallelism is fine, and calls are faster.
+  max-concurrent-calls: 6
+  timeout-seconds: 120

@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: ai-code-reviewer
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  http:
+    clients:
+      # Must exceed reviewer.timeout-seconds, otherwise the HTTP call to the model dies first.
+      connect-timeout: 10s
+      read-timeout: 200s
+  ai:
+    model:
+      chat: ollama          # the "claude" profile switches this to anthropic
+      embedding: none
+    ollama:
+      base-url: http://localhost:11434
+      init:
+        pull-model-strategy: when_missing
+        timeout: 15m        # first pull of a 7B model is several GB
+        embedding:
+          include: false
+      chat:
+        model: qwen2.5-coder:7b
+        temperature: 0.1
+        num-ctx: 8192
+    anthropic:
+      # Present so the starter can bind without a key; only used when spring.ai.model.chat=anthropic.
+      api-key: ${ANTHROPIC_API_KEY:unset}
+
+reviewer:
+  max-input-chars: 24000
+  max-chunks: 20
+  timeout-seconds: 180
+  max-concurrent-calls: 3
+  native-structured-output: true
+  title-similarity: 0.6
+  verdict:
+    request-changes-at: HIGH
+    comment-at: INFO
+    on-reviewer-failure: COMMENT
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ai-code-reviewer
+    provider: ${spring.ai.model.chat}
