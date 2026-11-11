@@ -7,10 +7,14 @@ import jakarta.validation.constraints.Size;
 /**
  * @param fileName optional name used for context in the prompt
  * @param content  source file or unified diff
- * @param isDiff   {@code true} when {@code content} is a unified diff
+ * @param isDiff   {@code true} when {@code content} is a unified diff; optional, defaults to {@code false}
  */
 public record ReviewRequest(
         @Size(max = 255) String fileName,
         @NotBlank String content,
-        @JsonProperty("isDiff") boolean isDiff) {
+        @JsonProperty("isDiff") Boolean isDiff) {
+
+    public ReviewRequest {
+        isDiff = Boolean.TRUE.equals(isDiff);
+    }
 }
