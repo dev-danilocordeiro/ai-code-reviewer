@@ -1,0 +1,2 @@
+{"fileName": "AccountAdminController.java", "issues": [
+  {"label": "Missing authorization on delete", "categories": ["SECURITY"], "at": "public ResponseEntity<Void> delete(", "tolerance": 3}]}

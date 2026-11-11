@@ -1,0 +1,23 @@
+diff --git a/src/main/java/com/example/orders/OrderService.java b/src/main/java/com/example/orders/OrderService.java
+--- a/src/main/java/com/example/orders/OrderService.java
++++ b/src/main/java/com/example/orders/OrderService.java
+@@ -31,12 +31,15 @@ public class OrderService {
+         this.clock = clock;
+     }
+ 
+-    public Order cancel(long id) {
+-        Order o = repository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+-        o.cancel(clock.instant());
+-        return repository.save(o);
++    /**
++     * Cancels an order. Cancelling an already cancelled order is a no-op.
++     */
++    @Transactional
++    public Order cancel(long orderId) {
++        Order order = repository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
++        order.cancel(clock.instant());
++        return order;
+     }
+ 
+     public Order get(long id) {
+         return repository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));

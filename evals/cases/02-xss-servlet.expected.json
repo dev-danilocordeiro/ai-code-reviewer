@@ -1,0 +1,2 @@
+{"fileName": "GreetingServlet.java", "issues": [
+  {"label": "Reflected XSS", "categories": ["SECURITY"], "at": "<h1>Hello, \" + name"}]}

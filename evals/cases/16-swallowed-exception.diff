@@ -1,0 +1,18 @@
+diff --git a/src/main/java/com/example/billing/InvoiceSender.java b/src/main/java/com/example/billing/InvoiceSender.java
+--- a/src/main/java/com/example/billing/InvoiceSender.java
++++ b/src/main/java/com/example/billing/InvoiceSender.java
+@@ -14,9 +14,13 @@ public class InvoiceSender {
+     }
+ 
+     public void send(Invoice invoice) {
+-        mailer.send(invoice.customerEmail(), render(invoice));
+-        invoice.markSent();
++        try {
++            mailer.send(invoice.customerEmail(), render(invoice));
++            invoice.markSent();
++        } catch (Exception e) {
++            // ignore
++        }
+     }
+ 
+     private String render(Invoice invoice) {

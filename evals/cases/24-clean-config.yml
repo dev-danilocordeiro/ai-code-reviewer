@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/app
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    ttl: 15m
+  api-key: ${PARTNER_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,2 @@
+{"fileName": "OrderReportService.java", "isDiff": true, "issues": [
+  {"label": "N+1 query", "categories": ["PERFORMANCE"], "at": "items.findByOrderId(order.getId())"}]}

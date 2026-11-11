@@ -1,0 +1,24 @@
+diff --git a/src/main/java/com/example/orders/OrderReportService.java b/src/main/java/com/example/orders/OrderReportService.java
+--- a/src/main/java/com/example/orders/OrderReportService.java
++++ b/src/main/java/com/example/orders/OrderReportService.java
+@@ -20,6 +20,20 @@ public class OrderReportService {
+         this.items = items;
+     }
+ 
++    @Transactional(readOnly = true)
++    public List<OrderSummary> summaries(LocalDate day) {
++        List<Order> dayOrders = orders.findByCreatedDate(day);
++        List<OrderSummary> result = new ArrayList<>();
++        for (Order order : dayOrders) {
++            List<OrderItem> lines = items.findByOrderId(order.getId());
++            BigDecimal total = lines.stream()
++                    .map(OrderItem::getPrice)
++                    .reduce(BigDecimal.ZERO, BigDecimal::add);
++            result.add(new OrderSummary(order.getId(), lines.size(), total));
++        }
++        return result;
++    }
++
+     public Order get(long id) {
+         return orders.findById(id).orElseThrow();
+     }

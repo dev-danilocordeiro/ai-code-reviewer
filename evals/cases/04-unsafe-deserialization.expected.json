@@ -1,0 +1,2 @@
+{"fileName": "SessionImportController.java", "issues": [
+  {"label": "Unsafe deserialization", "categories": ["SECURITY"], "at": "in.readObject()"}]}

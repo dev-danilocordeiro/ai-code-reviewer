@@ -1,0 +1,2 @@
+{"fileName": "CustomerCounter.java", "issues": [
+  {"label": "Connection/statement never closed", "categories": ["PERFORMANCE", "BUG"], "at": "dataSource.getConnection()", "tolerance": 3}]}

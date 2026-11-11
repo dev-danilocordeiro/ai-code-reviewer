@@ -1,0 +1,2 @@
+{"fileName": "InvoiceSender.java", "isDiff": true, "issues": [
+  {"label": "Swallowed exception", "categories": ["MAINTAINABILITY", "BUG"], "at": "+        } catch (Exception e) {", "tolerance": 2}]}
